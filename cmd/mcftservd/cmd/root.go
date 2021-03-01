@@ -18,26 +18,78 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gorilla/websocket"
+	"github.com/materials-commons/mcft/pkg/protocol"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/apex/log"
 )
 
-var cfgFile string
+var (
+	cfgFile  string
+	upgrader = websocket.Upgrader{}
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "mcftservd",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Upload/download file server",
+	Long:  `Handles upload and download file requests for materials commons from the mcft client.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		e := echo.New()
+		e.Use(middleware.Logger())
+		e.Use(middleware.Recover())
+		e.GET("/ws", handleFileRequests)
+		e.Logger.Fatal(e.Start(":1323"))
+	},
+}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+func handleFileRequests(c echo.Context) error {
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
+
+	for {
+		var command protocol.CommandMsg
+		if err := ws.ReadJSON(&command); err != nil {
+			break
+		}
+		switch command.MsgType {
+		case protocol.Login:
+			break
+		case protocol.SetProject:
+			break
+		case protocol.SendStat:
+			break
+		case protocol.SendChecksum:
+			break
+		case protocol.StatInfo:
+			break
+		case protocol.ChecksumInfo:
+			break
+		case protocol.SetPosition:
+			break
+		case protocol.Upload:
+			break
+		case protocol.FileBlock:
+			break
+		case protocol.FinishUpload:
+			break
+		case protocol.Download:
+			break
+		default:
+			log.Errorf("Unknown message type: %d", command.MsgType)
+		}
+	}
+
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
