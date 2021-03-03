@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gorilla/websocket"
 	"github.com/materials-commons/mcft/pkg/protocol"
@@ -42,51 +43,139 @@ var rootCmd = &cobra.Command{
 	Long:  `Handles upload and download file requests for materials commons from the mcft client.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		e := echo.New()
-		e.Use(middleware.Logger())
+		e.HideBanner = true
+		e.HidePort = true
+		//e.Use(middleware.Logger())
 		e.Use(middleware.Recover())
-		e.GET("/ws", handleFileRequests)
+		//e.GET("/ws", handleFileRequests)
+		e.GET("/ws", handleUploadDownloadConnection)
+
 		e.Logger.Fatal(e.Start(":1323"))
 	},
 }
 
+func handleUploadDownloadConnection(c echo.Context) error {
+	basePath := "/home/gtarcea/uploads"
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+
+	var command protocol.CommandMsg
+	var uploadMsg protocol.UploadMsg
+	var fileBlockMsg protocol.FileBlockMsg
+	var f *os.File
+
+	defer func() {
+		_ = ws.Close()
+		if f != nil {
+			_ = f.Close()
+		}
+	}()
+
+	for {
+
+		if err := ws.ReadJSON(&command); err != nil {
+			//log.Errorf("Failed reading the command: %s", err)
+			break
+		}
+
+		switch command.MsgType {
+		case protocol.Upload:
+			if err := ws.ReadJSON(&uploadMsg); err != nil {
+				log.Errorf("Expected upload msg, got err: %s", err)
+				return err
+			}
+			fullPath := filepath.Join(basePath, uploadMsg.Path)
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0770); err != nil {
+				log.Errorf("Unable to create directory: %s", err)
+				return err
+			}
+			f, err = os.Create(fullPath)
+			if err != nil {
+				log.Errorf("Unable to create file: %s", err)
+				return err
+			}
+			break
+		case protocol.FileBlock:
+			if err := ws.ReadJSON(&fileBlockMsg); err != nil {
+				log.Errorf("Expected FileBlock msg, got err: %s", err)
+				return err
+			}
+
+			n, err := f.Write(fileBlockMsg.Block)
+			if err != nil {
+				log.Errorf("Failed writing to file: %s", err)
+				break
+			}
+
+			if n != len(fileBlockMsg.Block) {
+				log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fileBlockMsg.Block))
+			}
+			break
+		}
+	}
+
+	return nil
+}
+
 func handleFileRequests(c echo.Context) error {
+	//basePath := "/home/gtarcea/uploads"
+	fileMap := make(map[string]*os.File)
+	_ = fileMap
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
 	defer ws.Close()
 
+	f, err := os.Create("/tmp/mcft.out")
+	if err != nil {
+		log.Errorf("Unable to create file /tmp/mcft.out")
+	}
+	defer f.Close()
+
 	for {
-		var command protocol.CommandMsg
-		if err := ws.ReadJSON(&command); err != nil {
+		//var command protocol.CommandMsg
+		var fb protocol.FileBlockMsg
+		if err := ws.ReadJSON(&fb); err != nil {
 			break
 		}
-		switch command.MsgType {
-		case protocol.Login:
+		n, err := f.Write(fb.Block)
+		if err != nil {
+			log.Errorf("Failed writing to file: %s", err)
 			break
-		case protocol.SetProject:
-			break
-		case protocol.SendStat:
-			break
-		case protocol.SendChecksum:
-			break
-		case protocol.StatInfo:
-			break
-		case protocol.ChecksumInfo:
-			break
-		case protocol.SetPosition:
-			break
-		case protocol.Upload:
-			break
-		case protocol.FileBlock:
-			break
-		case protocol.FinishUpload:
-			break
-		case protocol.Download:
-			break
-		default:
-			log.Errorf("Unknown message type: %d", command.MsgType)
 		}
+
+		if n != len(fb.Block) {
+			log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fb.Block))
+		}
+		//switch command.MsgType {
+		//case protocol.Login:
+		//	break
+		//case protocol.SetProject:
+		//	break
+		//case protocol.SendStat:
+		//	break
+		//case protocol.SendChecksum:
+		//	break
+		//case protocol.StatInfo:
+		//	break
+		//case protocol.ChecksumInfo:
+		//	break
+		//case protocol.SetPosition:
+		//	break
+		//case protocol.Upload:
+		//	break
+		//case protocol.FileBlock:
+		//	break
+		//case protocol.FinishUpload:
+		//	break
+		//case protocol.Download:
+		//	break
+		//default:
+		//	log.Errorf("Unknown message type: %d", command.MsgType)
+		//}
 	}
 
 	return nil

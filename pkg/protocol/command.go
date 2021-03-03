@@ -56,6 +56,7 @@ type UploadMsg struct {
 }
 
 type FileBlockMsg struct {
+	Path     string `json:"path"`
 	Block    []byte `json:"block"`
 	Checksum string `json:"checksum"`
 }
