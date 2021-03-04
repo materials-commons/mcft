@@ -118,7 +118,7 @@ var uploadCmd = &cobra.Command{
 }
 
 func uploadFile(pathToFile, uploadToPath string) error {
-	u := url.URL{Scheme: "ws", Host: "localhost:1323", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: serverAddress, Path: "/ws"}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatalf("Unable to connect to %s: %s", u.String(), err)
@@ -150,7 +150,7 @@ func uploadFile(pathToFile, uploadToPath string) error {
 		return err
 	}
 
-	data := make([]byte, 4096)
+	data := make([]byte, 32*1024)
 	fb := protocol.FileBlockMsg{
 		Path: uploadToPath,
 	}
@@ -184,5 +184,5 @@ func uploadFile(pathToFile, uploadToPath string) error {
 func init() {
 	rootCmd.AddCommand(uploadCmd)
 	uploadCmd.PersistentFlags().StringVarP(&uploadTo, "upload-to", "t", "", "Path to upload to in project")
-    uploadCmd.PersistentFlags().StringVarP(&serverAddress, "server-address", "s", "materialscommons.org", "Server to connect to")
+	uploadCmd.PersistentFlags().StringVarP(&serverAddress, "server-address", "s", "materialscommons.org", "Server to connect to")
 }
