@@ -30,7 +30,8 @@ import (
 )
 
 var (
-	uploadTo string
+	uploadTo      string
+	serverAddress string
 )
 
 // uploadCmd represents the upload command
@@ -180,18 +181,8 @@ func uploadFile(pathToFile, uploadToPath string) error {
 	return nil
 }
 
-var (
-//mu sync.Mutex
-)
-
-func writeJSON(c *websocket.Conn, what interface{}) error {
-	//mu.Lock()
-	//defer mu.Unlock()
-
-	return c.WriteJSON(what)
-}
-
 func init() {
 	rootCmd.AddCommand(uploadCmd)
 	uploadCmd.PersistentFlags().StringVarP(&uploadTo, "upload-to", "t", "", "Path to upload to in project")
+    uploadCmd.PersistentFlags().StringVarP(&serverAddress, "server-address", "s", "materialscommons.org", "Server to connect to")
 }
