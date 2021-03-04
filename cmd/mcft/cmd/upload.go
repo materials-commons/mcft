@@ -47,12 +47,15 @@ var uploadCmd = &cobra.Command{
 		//basePath := ""
 		for _, fileOrDirPath := range args {
 			fmt.Println("fileOrDirPath =", fileOrDirPath)
-			fi, err := os.Stat(fileOrDirPath)
+
 			basePath, _ := filepath.Abs(fileOrDirPath)
 			basePath = filepath.Dir(basePath)
 			fmt.Println("basePath =", basePath)
+
+			fi, err := os.Stat(fileOrDirPath)
 			if err != nil {
 				log.Errorf("Unable to read %s, skipping...", err)
+				continue
 			}
 
 			if fi.IsDir() {
