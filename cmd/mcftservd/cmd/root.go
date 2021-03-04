@@ -20,10 +20,14 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/websocket"
+	mcdb "github.com/materials-commons/gomcdb"
 	"github.com/materials-commons/mcft/pkg/protocol"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -33,6 +37,8 @@ import (
 
 var (
 	cfgFile  string
+	mcfsDir  string
+	db       *gorm.DB
 	upgrader = websocket.Upgrader{}
 )
 
@@ -42,12 +48,19 @@ var rootCmd = &cobra.Command{
 	Short: "Upload/download file server",
 	Long:  `Handles upload and download file requests for materials commons from the mcft client.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var err error
+		gormConfig := &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Silent),
+		}
+
+		if db, err = gorm.Open(mysql.Open(mcdb.MakeDSNFromEnv()), gormConfig); err != nil {
+			log.Fatalf("Failed to open db (%s): %s", mcdb.MakeDSNFromEnv(), err)
+		}
+
 		e := echo.New()
 		e.HideBanner = true
 		e.HidePort = true
-		//e.Use(middleware.Logger())
 		e.Use(middleware.Recover())
-		//e.GET("/ws", handleFileRequests)
 		e.GET("/ws", handleUploadDownloadConnection)
 
 		e.Logger.Fatal(e.Start(":1323"))
@@ -119,68 +132,6 @@ func handleUploadDownloadConnection(c echo.Context) error {
 	return nil
 }
 
-func handleFileRequests(c echo.Context) error {
-	//basePath := "/home/gtarcea/uploads"
-	fileMap := make(map[string]*os.File)
-	_ = fileMap
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	f, err := os.Create("/tmp/mcft.out")
-	if err != nil {
-		log.Errorf("Unable to create file /tmp/mcft.out")
-	}
-	defer f.Close()
-
-	for {
-		//var command protocol.CommandMsg
-		var fb protocol.FileBlockMsg
-		if err := ws.ReadJSON(&fb); err != nil {
-			break
-		}
-		n, err := f.Write(fb.Block)
-		if err != nil {
-			log.Errorf("Failed writing to file: %s", err)
-			break
-		}
-
-		if n != len(fb.Block) {
-			log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fb.Block))
-		}
-		//switch command.MsgType {
-		//case protocol.Login:
-		//	break
-		//case protocol.SetProject:
-		//	break
-		//case protocol.SendStat:
-		//	break
-		//case protocol.SendChecksum:
-		//	break
-		//case protocol.StatInfo:
-		//	break
-		//case protocol.ChecksumInfo:
-		//	break
-		//case protocol.SetPosition:
-		//	break
-		//case protocol.Upload:
-		//	break
-		//case protocol.FileBlock:
-		//	break
-		//case protocol.FinishUpload:
-		//	break
-		//case protocol.Download:
-		//	break
-		//default:
-		//	log.Errorf("Unknown message type: %d", command.MsgType)
-		//}
-	}
-
-	return nil
-}
-
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -198,9 +149,10 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mcftservd.yaml)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	mcfsDir = os.Getenv("MCFS_DIR")
+	if mcfsDir == "" {
+		log.Fatalf("MCFS_DIR environment variable not set")
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -29,7 +29,6 @@ type CommandMsg struct {
 }
 
 type LoginMsg struct {
-	Email    string `json:"email"`
 	APIToken string `json:"api_token"`
 }
 
@@ -56,7 +55,6 @@ type UploadMsg struct {
 }
 
 type FileBlockMsg struct {
-	Path     string `json:"path"`
 	Block    []byte `json:"block"`
 	Checksum string `json:"checksum"`
 }
