@@ -74,9 +74,9 @@ func handleUploadDownloadConnection(c echo.Context) error {
 		return err
 	}
 
-	var command protocol.CommandMsg
-	var uploadMsg protocol.UploadMsg
-	var fileBlockMsg protocol.FileBlockMsg
+	var incomingRequest protocol.IncomingRequestType
+	var uploadReq protocol.UploadFileRequest
+	var fileBlockReq protocol.FileBlockRequest
 	var f *os.File
 
 	defer func() {
@@ -88,18 +88,18 @@ func handleUploadDownloadConnection(c echo.Context) error {
 
 	for {
 
-		if err := ws.ReadJSON(&command); err != nil {
-			//log.Errorf("Failed reading the command: %s", err)
+		if err := ws.ReadJSON(&incomingRequest); err != nil {
+			//log.Errorf("Failed reading the incomingRequest: %s", err)
 			break
 		}
 
-		switch command.MsgType {
-		case protocol.Upload:
-			if err := ws.ReadJSON(&uploadMsg); err != nil {
+		switch incomingRequest.RequestType {
+		case protocol.UploadFileReq:
+			if err := ws.ReadJSON(&uploadReq); err != nil {
 				log.Errorf("Expected upload msg, got err: %s", err)
 				return err
 			}
-			fullPath := filepath.Join(basePath, uploadMsg.Path)
+			fullPath := filepath.Join(basePath, uploadReq.Path)
 			if err := os.MkdirAll(filepath.Dir(fullPath), 0770); err != nil {
 				log.Errorf("Unable to create directory: %s", err)
 				return err
@@ -110,20 +110,20 @@ func handleUploadDownloadConnection(c echo.Context) error {
 				return err
 			}
 			break
-		case protocol.FileBlock:
-			if err := ws.ReadJSON(&fileBlockMsg); err != nil {
+		case protocol.FileBlockReq:
+			if err := ws.ReadJSON(&fileBlockReq); err != nil {
 				log.Errorf("Expected FileBlock msg, got err: %s", err)
 				return err
 			}
 
-			n, err := f.Write(fileBlockMsg.Block)
+			n, err := f.Write(fileBlockReq.Block)
 			if err != nil {
 				log.Errorf("Failed writing to file: %s", err)
 				break
 			}
 
-			if n != len(fileBlockMsg.Block) {
-				log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fileBlockMsg.Block))
+			if n != len(fileBlockReq.Block) {
+				log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fileBlockReq.Block))
 			}
 			break
 		}

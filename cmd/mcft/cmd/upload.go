@@ -135,16 +135,16 @@ func uploadFile(pathToFile, uploadToPath string) error {
 	}
 	defer f.Close()
 
-	var command protocol.CommandMsg
+	var incomingReq protocol.IncomingRequestType
 
-	command.MsgType = protocol.Upload
-	if err := c.WriteJSON(command); err != nil {
+	incomingReq.RequestType = protocol.UploadFileReq
+	if err := c.WriteJSON(incomingReq); err != nil {
 		//log.Errorf("Unable to initiate upload: %s", err)
 		return err
 	}
 
 	// First send notice of upload
-	uploadMsg := protocol.UploadMsg{
+	uploadMsg := protocol.UploadFileRequest{
 		Path: uploadToPath,
 	}
 
@@ -154,9 +154,7 @@ func uploadFile(pathToFile, uploadToPath string) error {
 	}
 
 	data := make([]byte, 32*1024)
-	fb := protocol.FileBlockMsg{
-		Path: uploadToPath,
-	}
+	fb := protocol.FileBlockRequest{}
 	for {
 
 		n, err := f.Read(data)
@@ -168,8 +166,8 @@ func uploadFile(pathToFile, uploadToPath string) error {
 			break
 		}
 
-		command.MsgType = protocol.FileBlock
-		if err := c.WriteJSON(command); err != nil {
+		incomingReq.RequestType = protocol.FileBlockReq
+		if err := c.WriteJSON(incomingReq); err != nil {
 			//log.Errorf("Unable to initiate upload: %s", err)
 			return err
 		}
