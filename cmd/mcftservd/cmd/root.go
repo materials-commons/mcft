@@ -15,12 +15,14 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/gorilla/websocket"
 	mcdb "github.com/materials-commons/gomcdb"
+	"github.com/materials-commons/gomcdb/mcmodel"
 	"github.com/materials-commons/mcft/pkg/protocol"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -86,14 +88,25 @@ func handleUploadDownloadConnection(c echo.Context) error {
 		}
 	}()
 
-	for {
+	if err := ws.ReadJSON(&incomingRequest); err != nil {
+		return err
+	}
 
+	if incomingRequest.RequestType != protocol.AuthenticateReq {
+		return errors.New("not authenticated")
+	}
+
+	for {
 		if err := ws.ReadJSON(&incomingRequest); err != nil {
 			//log.Errorf("Failed reading the incomingRequest: %s", err)
 			break
 		}
 
 		switch incomingRequest.RequestType {
+		case protocol.AuthenticateReq:
+			if err := authenticate(ws); err != nil {
+				return err
+			}
 		case protocol.UploadFileReq:
 			if err := ws.ReadJSON(&uploadReq); err != nil {
 				log.Errorf("Expected upload msg, got err: %s", err)
@@ -130,6 +143,17 @@ func handleUploadDownloadConnection(c echo.Context) error {
 	}
 
 	return nil
+}
+
+func authenticate(ws *websocket.Conn) error {
+	var authReq protocol.AuthenticateRequest
+	if err := ws.ReadJSON(&authReq); err != nil {
+		return err
+	}
+
+	var user mcmodel.User
+
+	return db.Where("api_token = ?", authReq.APIToken).First(&user).Error
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
