@@ -15,15 +15,12 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/gorilla/websocket"
 	mcdb "github.com/materials-commons/gomcdb"
-	"github.com/materials-commons/gomcdb/mcmodel"
-	"github.com/materials-commons/mcft/pkg/protocol"
+	"github.com/materials-commons/mcft/pkg/ft"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -65,95 +62,27 @@ var rootCmd = &cobra.Command{
 		e.Use(middleware.Recover())
 		e.GET("/ws", handleUploadDownloadConnection)
 
-		e.Logger.Fatal(e.Start(":1323"))
+		e.Logger.Fatal(e.Start(":1423"))
 	},
 }
 
 func handleUploadDownloadConnection(c echo.Context) error {
-	basePath := "/home/gtarcea/uploads"
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
 
-	var incomingRequest protocol.IncomingRequestType
-	var uploadReq protocol.UploadFileRequest
-	var fileBlockReq protocol.FileBlockRequest
-	var f *os.File
-
+	fileTransferHandler := ft.NewFileTransferHandler(ws, db)
 	defer func() {
 		_ = ws.Close()
-		if f != nil {
-			_ = f.Close()
-		}
 	}()
 
-	if err := ws.ReadJSON(&incomingRequest); err != nil {
-		return err
-	}
-
-	if incomingRequest.RequestType != protocol.AuthenticateReq {
-		return errors.New("not authenticated")
-	}
-
-	for {
-		if err := ws.ReadJSON(&incomingRequest); err != nil {
-			//log.Errorf("Failed reading the incomingRequest: %s", err)
-			break
-		}
-
-		switch incomingRequest.RequestType {
-		case protocol.AuthenticateReq:
-			if err := authenticate(ws); err != nil {
-				return err
-			}
-		case protocol.UploadFileReq:
-			if err := ws.ReadJSON(&uploadReq); err != nil {
-				log.Errorf("Expected upload msg, got err: %s", err)
-				return err
-			}
-			fullPath := filepath.Join(basePath, uploadReq.Path)
-			if err := os.MkdirAll(filepath.Dir(fullPath), 0770); err != nil {
-				log.Errorf("Unable to create directory: %s", err)
-				return err
-			}
-			f, err = os.Create(fullPath)
-			if err != nil {
-				log.Errorf("Unable to create file: %s", err)
-				return err
-			}
-			break
-		case protocol.FileBlockReq:
-			if err := ws.ReadJSON(&fileBlockReq); err != nil {
-				log.Errorf("Expected FileBlock msg, got err: %s", err)
-				return err
-			}
-
-			n, err := f.Write(fileBlockReq.Block)
-			if err != nil {
-				log.Errorf("Failed writing to file: %s", err)
-				break
-			}
-
-			if n != len(fileBlockReq.Block) {
-				log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fileBlockReq.Block))
-			}
-			break
-		}
+	if err := fileTransferHandler.Run(); err != nil {
+		status := ft.Error2Status(err)
+		_ = ws.WriteJSON(status)
 	}
 
 	return nil
-}
-
-func authenticate(ws *websocket.Conn) error {
-	var authReq protocol.AuthenticateRequest
-	if err := ws.ReadJSON(&authReq); err != nil {
-		return err
-	}
-
-	var user mcmodel.User
-
-	return db.Where("api_token = ?", authReq.APIToken).First(&user).Error
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -167,10 +96,6 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mcftservd.yaml)")
 
 	mcfsDir = os.Getenv("MCFS_DIR")
