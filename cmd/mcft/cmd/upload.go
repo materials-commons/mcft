@@ -15,10 +15,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -43,15 +45,11 @@ var uploadCmd = &cobra.Command{
 	Args:    cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
-		//currentDir, _ := os.Getwd()
-		//basePath := ""
-		for _, fileOrDirPath := range args {
-			fmt.Println("fileOrDirPath =", fileOrDirPath)
+		apiKey := mustReadApiKey()
 
+		for _, fileOrDirPath := range args {
 			basePath, _ := filepath.Abs(fileOrDirPath)
 			basePath = filepath.Dir(basePath)
-			fmt.Println("basePath =", basePath)
-
 			fi, err := os.Stat(fileOrDirPath)
 			if err != nil {
 				log.Errorf("Unable to read %s, skipping...", err)
@@ -61,10 +59,6 @@ var uploadCmd = &cobra.Command{
 			if fi.IsDir() {
 				// walk function called for every path found
 				walkFn := func(pathname string, fi os.FileInfo) error {
-					//if fi.IsDir() {
-					//	return nil
-					//}
-
 					if !fi.Mode().IsRegular() {
 						return nil
 					}
@@ -72,11 +66,8 @@ var uploadCmd = &cobra.Command{
 					if !strings.HasPrefix(pathname, "/") {
 						pathname, _ = filepath.Abs(pathname)
 					}
-					fmt.Printf("Replace: %s, %s, %s\n", pathname, basePath, uploadTo)
 					uploadPath := filepath.Join("/", strings.Replace(pathname, basePath, uploadTo, 1))
-
-					fmt.Printf("%s to %s\n\n", pathname, uploadPath)
-					if err := uploadFile(pathname, uploadPath); err != nil {
+					if err := uploadFile(pathname, uploadPath, apiKey); err != nil {
 						log.Errorf("Upload failed for %s: %s", pathname, err)
 					}
 
@@ -112,7 +103,7 @@ var uploadCmd = &cobra.Command{
 				}
 
 				fmt.Printf("Uploading file: %s to %s\n\n", fileOrDirPath, uploadPath)
-				if err := uploadFile(fileOrDirPath, uploadPath); err != nil {
+				if err := uploadFile(fileOrDirPath, uploadPath, apiKey); err != nil {
 					log.Errorf("Upload failed for %s: %s", fileOrDirPath, err)
 				}
 			}
@@ -120,7 +111,7 @@ var uploadCmd = &cobra.Command{
 	},
 }
 
-func uploadFile(pathToFile, uploadToPath string) error {
+func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 	u := url.URL{Scheme: "ws", Host: serverAddress, Path: "/ws"}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -136,6 +127,10 @@ func uploadFile(pathToFile, uploadToPath string) error {
 	defer f.Close()
 
 	var incomingReq protocol.IncomingRequestType
+
+	if !authenticate(c, apiKey) {
+		log.Fatalf("Unable to authenticate")
+	}
 
 	incomingReq.RequestType = protocol.UploadFileReq
 	if err := c.WriteJSON(incomingReq); err != nil {
@@ -180,6 +175,47 @@ func uploadFile(pathToFile, uploadToPath string) error {
 	}
 
 	return nil
+}
+
+func authenticate(c *websocket.Conn, key string) bool {
+	var req protocol.IncomingRequestType
+	req.RequestType = protocol.AuthenticateReq
+	if err := c.WriteJSON(req); err != nil {
+		return false
+	}
+
+	auth := protocol.AuthenticateRequest{
+		APIToken: key,
+	}
+
+	if err := c.WriteJSON(auth); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func mustReadApiKey() string {
+	u, err := user.Current()
+	if err != nil {
+		log.Fatalf("Unable to identify user: %s", err)
+	}
+
+	configPath := filepath.Join(u.HomeDir, ".materialscommmons", "config.json")
+	contents, err := os.ReadFile(configPath)
+	if err != nil {
+		log.Fatalf("Unable to read %s: %s", configPath, err)
+	}
+
+	var config struct {
+		APIKey string `json:"api_key"`
+	}
+
+	if err := json.Unmarshal(contents, &config); err != nil {
+		log.Fatalf("Unable to parse (%s): %s", configPath, err)
+	}
+
+	return config.APIKey
 }
 
 func init() {
