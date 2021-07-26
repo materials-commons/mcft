@@ -21,9 +21,11 @@ var (
 )
 
 type FileTransferHandler struct {
-	db *gorm.DB
-	ws *websocket.Conn
-	f  *os.File
+	db        *gorm.DB
+	ws        *websocket.Conn
+	f         *os.File
+	ProjectID int
+	User      mcmodel.User
 }
 
 func NewFileTransferHandler(ws *websocket.Conn, db *gorm.DB) *FileTransferHandler {
@@ -88,7 +90,13 @@ func (h *FileTransferHandler) authenticate() error {
 
 	var user mcmodel.User
 
-	return h.db.Where("api_token = ?", authReq.APIToken).First(&user).Error
+	if err := h.db.Where("api_token = ?", authReq.APIToken).First(&user).Error; err != nil {
+		return err
+	}
+
+	h.User = user
+
+	return nil
 }
 
 func (h *FileTransferHandler) startUploadFile() error {

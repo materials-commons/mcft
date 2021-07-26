@@ -37,7 +37,8 @@ type IncomingRequestType struct {
 }
 
 type AuthenticateRequest struct {
-	APIToken string `json:"apitoken"`
+	APIToken  string `json:"apitoken"`
+	ProjectID int    `json:"project_id"`
 	Version
 }
 
