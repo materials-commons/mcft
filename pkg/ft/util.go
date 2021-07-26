@@ -1,7 +1,22 @@
 package ft
 
-import "github.com/materials-commons/mcft/pkg/protocol"
+import (
+	"os"
+
+	"github.com/materials-commons/mcft/pkg/protocol"
+)
+
+const McfsDefault = "/mcfs/data/materialscommons"
 
 func Error2Status(err error) protocol.StatusResponse {
 	return protocol.StatusResponse{}
+}
+
+func GetMCFSRoot() string {
+	root := os.Getenv("MCFS_ROOT")
+	if root == "" {
+		return McfsDefault
+	}
+
+	return root
 }
