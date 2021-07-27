@@ -1,8 +1,12 @@
 package ft
 
 import (
+	"bytes"
+	"crypto/md5"
 	"errors"
 	"fmt"
+	"hash"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -24,10 +28,12 @@ type FileTransferHandler struct {
 	db           *gorm.DB
 	ws           *websocket.Conn
 	f            *os.File
-	ProjectID    int
+	Project      *mcmodel.Project
 	User         mcmodel.User
+	File         *mcmodel.File
 	projectStore *store.ProjectStore
 	fileStore    *store.FileStore
+	hasher       hash.Hash
 	mcfsRoot     string
 }
 
@@ -37,6 +43,7 @@ func NewFileTransferHandler(ws *websocket.Conn, db *gorm.DB) *FileTransferHandle
 		db:           db,
 		projectStore: store.NewProjectStore(db),
 		fileStore:    store.NewFileStore(db, GetMCFSRoot()),
+		hasher:       md5.New(),
 		mcfsRoot:     GetMCFSRoot(),
 	}
 }
@@ -79,11 +86,17 @@ func (h *FileTransferHandler) Run() error {
 func (h *FileTransferHandler) close() {
 	if h.f != nil {
 		_ = h.f.Close()
-		// Here is where we need to finish closing the file in the database by:
-		//   1. Setting it to the current file
-		//   2. Updating its size info
-		//   3. Kicking off a job to do a conversion (if appropriate)
-		//   4. Updating counts (by asking Laravel to do that in an update request)
+		finfo, err := os.Stat(h.File.ToUnderlyingFilePath(h.mcfsRoot))
+		if err == nil {
+			checksum := fmt.Sprintf("%x", h.hasher.Sum(nil))
+			if err := h.fileStore.UpdateMetadataForFileAndProject(h.File, checksum, h.Project.ID, finfo.Size()); err != nil {
+				log.Errorf("Failed to update metadata for file %d: %s", h.File.ID, err)
+			}
+		}
+		if h.fileNeedsConverting() {
+			//   3. Kicking off a job to do a conversion (if appropriate)
+			h.submitConversionJobOnFile()
+		}
 	}
 }
 
@@ -114,7 +127,11 @@ func (h *FileTransferHandler) authenticate() error {
 		return ErrNotAuthenticated
 	}
 
-	h.ProjectID = authReq.ProjectID
+	var err error
+	h.Project, err = h.projectStore.FindProject(authReq.ProjectID)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -129,7 +146,7 @@ func (h *FileTransferHandler) startUploadFile() error {
 		return err
 	}
 
-	dir, err := h.fileStore.FindDirByPath(h.ProjectID, filepath.Dir(uploadReq.Path))
+	dir, err := h.fileStore.FindDirByPath(h.Project.ID, filepath.Dir(uploadReq.Path))
 	if err != nil {
 		dir, err = h.CreateDirectoryAll(filepath.Dir(uploadReq.Path))
 		if err != nil {
@@ -140,11 +157,12 @@ func (h *FileTransferHandler) startUploadFile() error {
 	}
 
 	name := filepath.Base(uploadReq.Path)
-	file, err = h.fileStore.CreateFile(name, h.ProjectID, dir.ID, h.User.ID, getMimeType(name))
+	file, err = h.fileStore.CreateFile(name, h.Project.ID, dir.ID, h.User.ID, getMimeType(name))
 	if err != nil {
 		return err
 	}
 
+	h.File = file
 	h.f, err = os.Create(file.ToUnderlyingFilePath(h.mcfsRoot))
 	if err != nil {
 		log.Errorf("Unable to create file: %s", err)
@@ -172,6 +190,9 @@ func (h *FileTransferHandler) writeFileBlock() error {
 		log.Errorf("Failed writing to file: %s", err)
 	}
 
+	// Compute checksum as we go
+	_, _ = io.Copy(h.hasher, bytes.NewBuffer(fileBlockReq.Block))
+
 	if n != len(fileBlockReq.Block) {
 		log.Errorf("Did not write all of block, wrote %d, length %d", n, len(fileBlockReq.Block))
 		err = errors.New("not all bytes written to file")
@@ -181,7 +202,51 @@ func (h *FileTransferHandler) writeFileBlock() error {
 }
 
 func (h *FileTransferHandler) CreateDirectoryAll(dir string) (*mcmodel.File, error) {
-	return nil, nil
+	dirs := strings.Split(dir, "/")
+	pathToCheck := "/"
+
+	parentDir, err := h.fileStore.FindDirByPath(h.Project.ID, "/")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, dirName := range dirs {
+		pathToCheck = filepath.Join(pathToCheck, dirName)
+		dirEntry, err2 := h.fileStore.FindDirByPath(h.Project.ID, pathToCheck)
+		switch {
+		case err2 != nil, dirEntry == nil:
+			dirEntry, err2 = h.fileStore.CreateDir(parentDir.ID, pathToCheck, dirName, h.Project.ID, h.User.ID)
+			if err2 != nil {
+				return nil, err2
+			}
+			parentDir = dirEntry
+		default:
+			parentDir = dirEntry
+		}
+	}
+	return parentDir, nil
+}
+
+func (h *FileTransferHandler) fileNeedsConverting() bool {
+	switch h.File.MimeType {
+	case "application/msword",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/vnd.ms-powerpoint",
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		// Office document that can be converted to PDF
+		return true
+	case "image/bmp",
+		"image/x-ms-bmp",
+		"image/tiff":
+		// images that need to be converted to JPEG to display on web
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *FileTransferHandler) submitConversionJobOnFile() {
+
 }
 
 // getMimeType will determine the type of a file from its extension. It strips out the extra information

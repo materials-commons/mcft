@@ -147,6 +147,12 @@ github.com/materials-commons/gomcdb v0.0.0-20210726184449-c1d65a0fb36a h1:Jw3ogG
 github.com/materials-commons/gomcdb v0.0.0-20210726184449-c1d65a0fb36a/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
 github.com/materials-commons/gomcdb v0.0.0-20210726190617-1f037e77e95d h1:rZU2hFh2M9iv4qA3DEsTa5RMXgotcYnsPoeiigXwSbw=
 github.com/materials-commons/gomcdb v0.0.0-20210726190617-1f037e77e95d/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
+github.com/materials-commons/gomcdb v0.0.0-20210727131050-6114b9fc3305 h1:9lq0xTXbbuOCTR8lrqgL9RJwQY+J52yb/cInBaDt3HU=
+github.com/materials-commons/gomcdb v0.0.0-20210727131050-6114b9fc3305/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
+github.com/materials-commons/gomcdb v0.0.0-20210727132814-5c27b1b317d6 h1:kcdVg/OhhT4DVo5cXnMApGsBAh3PYiW9iC0912YhzX4=
+github.com/materials-commons/gomcdb v0.0.0-20210727132814-5c27b1b317d6/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
+github.com/materials-commons/gomcdb v0.0.0-20210727152817-f277f787f243 h1:G89LMlDF3nlroTI9R7wsiL2VJBZib5hYMCLM4dtUKy4=
+github.com/materials-commons/gomcdb v0.0.0-20210727152817-f277f787f243/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
