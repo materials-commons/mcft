@@ -34,6 +34,7 @@ import (
 var (
 	uploadTo      string
 	serverAddress string
+	projectID     int
 )
 
 // uploadCmd represents the upload command
@@ -44,6 +45,14 @@ var uploadCmd = &cobra.Command{
 	Long:    `Upload files/directories to Materials Commons`,
 	Args:    cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+
+		if uploadTo == "" {
+			log.Fatalf("You must specify an upload path")
+		}
+
+		if projectID < 1 {
+			log.Fatalf("You must specify a project id to upload to")
+		}
 
 		apiKey := mustReadApiKey()
 
@@ -185,7 +194,8 @@ func authenticate(c *websocket.Conn, key string) bool {
 	}
 
 	auth := protocol.AuthenticateRequest{
-		APIToken: key,
+		APIToken:  key,
+		ProjectID: projectID,
 	}
 
 	if err := c.WriteJSON(auth); err != nil {
@@ -221,5 +231,6 @@ func mustReadApiKey() string {
 func init() {
 	rootCmd.AddCommand(uploadCmd)
 	uploadCmd.PersistentFlags().StringVarP(&uploadTo, "upload-to", "t", "", "Path to upload to in project")
+	uploadCmd.PersistentFlags().IntVarP(&projectID, "project-id", "p", -1, "Project ID to upload to")
 	uploadCmd.PersistentFlags().StringVarP(&serverAddress, "server-address", "s", "materialscommons.org", "Server to connect to")
 }
