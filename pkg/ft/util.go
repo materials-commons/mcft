@@ -13,7 +13,7 @@ func Error2Status(err error) protocol.StatusResponse {
 }
 
 func GetMCFSRoot() string {
-	root := os.Getenv("MCFS_ROOT")
+	root := os.Getenv("MCFS_DIR")
 	if root == "" {
 		return McfsDefault
 	}

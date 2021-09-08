@@ -206,6 +206,10 @@ func authenticate(c *websocket.Conn, key string) bool {
 }
 
 func mustReadApiKey() string {
+	if apikey := os.Getenv("MCAPIKEY"); apikey != "" {
+		return apikey
+	}
+
 	u, err := user.Current()
 	if err != nil {
 		log.Fatalf("Unable to identify user: %s", err)

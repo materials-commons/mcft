@@ -62,6 +62,8 @@ var rootCmd = &cobra.Command{
 		e.Use(middleware.Recover())
 		e.GET("/ws", handleUploadDownloadConnection)
 
+		showEnv()
+
 		e.Logger.Fatal(e.Start(":1423"))
 	},
 }
@@ -83,6 +85,11 @@ func handleUploadDownloadConnection(c echo.Context) error {
 	}
 
 	return nil
+}
+
+func showEnv() {
+	fmt.Printf("MCFS_ROOT = '%s'\n", ft.GetMCFSRoot())
+	fmt.Printf("DSN = '%s'\n", mcdb.MakeDSNFromEnv())
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
