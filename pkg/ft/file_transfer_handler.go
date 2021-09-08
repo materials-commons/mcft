@@ -152,8 +152,6 @@ func (h *FileTransferHandler) startUploadFile() error {
 		if err != nil {
 			return err
 		}
-
-		_ = os.MkdirAll(dir.ToUnderlyingDirPath(h.mcfsRoot), 0770)
 	}
 
 	name := filepath.Base(uploadReq.Path)
@@ -165,6 +163,7 @@ func (h *FileTransferHandler) startUploadFile() error {
 	dirPath := file.ToUnderlyingDirPath(h.mcfsRoot)
 	if err := os.MkdirAll(dirPath, 0777); err != nil {
 		log.Errorf("Unable to create directory path %s to store file %s: %s", dirPath, name, err)
+		return err
 	}
 
 	h.File = file
