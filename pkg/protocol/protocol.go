@@ -112,6 +112,7 @@ type StatusResponse struct {
 	Path           string `json:"path"`
 	ForRequestType string `json:"for_request_type"`
 	Status         string `json:"status"`
+	IsError        bool
 	Version
 }
 

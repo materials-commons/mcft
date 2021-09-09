@@ -158,6 +158,10 @@ github.com/materials-commons/gomcdb v0.0.0-20210908153844-79c9bebe9727 h1:qiboRl
 github.com/materials-commons/gomcdb v0.0.0-20210908153844-79c9bebe9727/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
 github.com/materials-commons/gomcdb v0.0.0-20210908155539-9f663a90745e h1:7tciz4+Wx7/9zwNEWCQ+wguLUaMXm+ECb0AMRMrboWY=
 github.com/materials-commons/gomcdb v0.0.0-20210908155539-9f663a90745e/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
+github.com/materials-commons/gomcdb v0.0.0-20210909145547-078750ae6dec h1:cYLAZaw/GYt4G0R+51kQ6yYriCXLA5dD7fQfQ08hymI=
+github.com/materials-commons/gomcdb v0.0.0-20210909145547-078750ae6dec/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
+github.com/materials-commons/gomcdb v0.0.0-20210909150441-02441f60373a h1:5N4cDcALiq2sJToKTXKHChdehWXIHL455QGgVbRIwnI=
+github.com/materials-commons/gomcdb v0.0.0-20210909150441-02441f60373a/go.mod h1:PyRr4cTLJifG3W0GWYZbiNzRZdo3dteiYZy1lG5Of4M=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=

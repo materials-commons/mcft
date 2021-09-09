@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/labstack/echo/v4 v4.2.0
-	github.com/materials-commons/gomcdb v0.0.0-20210908155539-9f663a90745e
+	github.com/materials-commons/gomcdb v0.0.0-20210909150441-02441f60373a
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/saracen/walker v0.1.2
 	github.com/spf13/cobra v1.1.3

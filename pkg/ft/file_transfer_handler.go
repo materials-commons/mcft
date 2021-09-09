@@ -66,7 +66,7 @@ func (h *FileTransferHandler) Run() error {
 		var err error
 		switch incomingRequest.RequestType {
 		case protocol.AuthenticateReq:
-			return ErrAlreadyAuthenticated
+			err = ErrAlreadyAuthenticated
 		case protocol.UploadFileReq:
 			err = h.startUploadFile()
 		case protocol.FileBlockReq:
@@ -75,8 +75,18 @@ func (h *FileTransferHandler) Run() error {
 			err = fmt.Errorf("unknown request type: %d", incomingRequest.RequestType)
 		}
 
+		statusResponse := protocol.StatusResponse{
+			Status:  "continue",
+			IsError: false,
+		}
+
 		if err != nil {
+			statusResponse.Status = fmt.Sprintf("%s", err)
+			statusResponse.IsError = true
+			_ = h.ws.WriteJSON(statusResponse)
 			return err
+		} else {
+			_ = h.ws.WriteJSON(statusResponse)
 		}
 	}
 
@@ -178,7 +188,6 @@ func (h *FileTransferHandler) startUploadFile() error {
 func (h *FileTransferHandler) writeFileBlock() error {
 	if h.f == nil {
 		return ErrBadProtocolSequence
-
 	}
 
 	var fileBlockReq protocol.FileBlockRequest

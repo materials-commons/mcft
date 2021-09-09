@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -75,7 +76,9 @@ var uploadCmd = &cobra.Command{
 					if !strings.HasPrefix(pathname, "/") {
 						pathname, _ = filepath.Abs(pathname)
 					}
+					pathname = filepath.Clean(pathname)
 					uploadPath := filepath.Join("/", strings.Replace(pathname, basePath, uploadTo, 1))
+					fmt.Printf("Uploading file: %s to %s\n\n", pathname, uploadPath)
 					if err := uploadFile(pathname, uploadPath, apiKey); err != nil {
 						log.Errorf("Upload failed for %s: %s", pathname, err)
 					}
@@ -111,6 +114,7 @@ var uploadCmd = &cobra.Command{
 					continue
 				}
 
+				fileOrDirPath = filepath.Clean(fileOrDirPath)
 				fmt.Printf("Uploading file: %s to %s\n\n", fileOrDirPath, uploadPath)
 				if err := uploadFile(fileOrDirPath, uploadPath, apiKey); err != nil {
 					log.Errorf("Upload failed for %s: %s", fileOrDirPath, err)
@@ -157,7 +161,18 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 		return err
 	}
 
-	data := make([]byte, 32*1024)
+	var status protocol.StatusResponse
+	if err := c.ReadJSON(&status); err != nil {
+		log.Errorf("Unable to read upload status: %s", err)
+		return err
+	}
+
+	if status.IsError {
+		log.Errorf("Error starting file transfer: %s", status.Status)
+		return errors.New("failed to start transfer")
+	}
+
+	data := make([]byte, 32*1024*1024)
 	fb := protocol.FileBlockRequest{}
 	for {
 
@@ -172,7 +187,7 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 
 		incomingReq.RequestType = protocol.FileBlockReq
 		if err := c.WriteJSON(incomingReq); err != nil {
-			//log.Errorf("Unable to initiate upload: %s", err)
+			log.Errorf("Error during upload: %s", err)
 			return err
 		}
 
@@ -180,6 +195,17 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 		if err := c.WriteJSON(fb); err != nil {
 			//log.Errorf("WriteJSON failed: %s", err)
 			return err
+		}
+
+		var status protocol.StatusResponse
+		if err := c.ReadJSON(&status); err != nil {
+			log.Errorf("Unable to read upload status: %s", err)
+			return err
+		}
+
+		if status.IsError {
+			log.Errorf("Error uploading file: %s", status.Status)
+			return errors.New("failed upload")
 		}
 	}
 
