@@ -12,6 +12,7 @@ require (
 	github.com/saracen/walker v0.1.2
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
+	github.com/subosito/gotenv v1.2.0 // indirect
 	gorm.io/driver/mysql v1.0.4
 	gorm.io/gorm v1.21.1
 )
