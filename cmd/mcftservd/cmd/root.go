@@ -102,7 +102,10 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	if err := gotenv.Load(MustGetDotenvPath()); err != nil {
+		log.Fatalf("Loading dotenv file path %s failed: %s", dotenvPath, err)
+	}
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mcftservd.yaml)")
 
 	mcfsDir = os.Getenv("MCFS_DIR")
