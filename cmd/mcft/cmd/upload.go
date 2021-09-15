@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -125,7 +126,8 @@ var uploadCmd = &cobra.Command{
 }
 
 func uploadFile(pathToFile, uploadToPath, apiKey string) error {
-	u := url.URL{Scheme: "ws", Host: serverAddress, Path: "/ws"}
+	u := url.URL{Scheme: "wss", Host: serverAddress, Path: "/ws"}
+	websocket.DefaultDialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatalf("Unable to connect to %s: %s", u.String(), err)
