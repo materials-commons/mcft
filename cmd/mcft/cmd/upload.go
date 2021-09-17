@@ -126,7 +126,13 @@ var uploadCmd = &cobra.Command{
 }
 
 func uploadFile(pathToFile, uploadToPath, apiKey string) error {
-	u := url.URL{Scheme: "wss", Host: serverAddress, Path: "/ws"}
+	// Websocket connection defaults to wss, but can be overridden. Useful for local testing.
+	wsScheme := os.Getenv("MC_WS_SCHEME")
+	if wsScheme == "" {
+		wsScheme = "wss"
+	}
+
+	u := url.URL{Scheme: wsScheme, Host: serverAddress, Path: "/ws"}
 	websocket.DefaultDialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
