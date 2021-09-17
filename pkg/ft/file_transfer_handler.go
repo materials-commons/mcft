@@ -160,6 +160,7 @@ func (h *FileTransferHandler) startUploadFile() error {
 	if err != nil {
 		dir, err = h.CreateDirectoryAll(filepath.Dir(uploadReq.Path))
 		if err != nil {
+			fmt.Println("CreateDirectoryAll failed: ", dir, ":", err)
 			return err
 		}
 	}
@@ -167,6 +168,7 @@ func (h *FileTransferHandler) startUploadFile() error {
 	name := filepath.Base(uploadReq.Path)
 	file, err = h.fileStore.CreateFile(name, h.Project.ID, dir.ID, h.User.ID, getMimeType(name))
 	if err != nil {
+		fmt.Println("CreateFile failed: ", err)
 		return err
 	}
 
@@ -220,6 +222,7 @@ func (h *FileTransferHandler) CreateDirectoryAll(dir string) (*mcmodel.File, err
 
 	parentDir, err := h.fileStore.FindDirByPath(h.Project.ID, "/")
 	if err != nil {
+		fmt.Println("  CreateDirectoryAll - FindDirByPath failed:", err)
 		return nil, err
 	}
 
@@ -230,6 +233,7 @@ func (h *FileTransferHandler) CreateDirectoryAll(dir string) (*mcmodel.File, err
 		case err2 != nil, dirEntry == nil:
 			dirEntry, err2 = h.fileStore.CreateDir(parentDir.ID, pathToCheck, dirName, h.Project.ID, h.User.ID)
 			if err2 != nil {
+				fmt.Println("  CreateDirectoryAll - CreateDir failed:", err2)
 				return nil, err2
 			}
 			parentDir = dirEntry
