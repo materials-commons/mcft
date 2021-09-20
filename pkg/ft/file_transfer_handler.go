@@ -156,13 +156,10 @@ func (h *FileTransferHandler) startUploadFile() error {
 		return err
 	}
 
-	dir, err := h.fileStore.FindDirByPath(h.Project.ID, filepath.Dir(uploadReq.Path))
+	dir, err := h.getOrCreateDirectory(filepath.Dir(uploadReq.Path))
 	if err != nil {
-		dir, err = h.CreateDirectoryAll(filepath.Dir(uploadReq.Path))
-		if err != nil {
-			fmt.Println("CreateDirectoryAll failed: ", dir, ":", err)
-			return err
-		}
+		log.Errorf("getOrCreateDirectory failed for %s: %s", filepath.Dir(uploadReq.Path), err)
+		return err
 	}
 
 	name := filepath.Base(uploadReq.Path)
@@ -185,6 +182,21 @@ func (h *FileTransferHandler) startUploadFile() error {
 	}
 
 	return err
+}
+
+func (h *FileTransferHandler) getOrCreateDirectory(dirPath string) (*mcmodel.File, error) {
+	acquireProjectMutex(h.Project.ID)
+	defer releaseProjectMutex(h.Project.ID)
+
+	dir, err := h.fileStore.FindDirByPath(h.Project.ID, dirPath)
+	if err != nil {
+		dir, err = h.CreateDirectoryAll(dirPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return dir, nil
 }
 
 func (h *FileTransferHandler) writeFileBlock() error {
