@@ -6,16 +6,16 @@ import (
 	"github.com/apex/log"
 )
 
-var mapMutex *sync.Mutex
+var mapMutex sync.Mutex
 var mutexes = make(map[int]*sync.Mutex)
 
 func acquireProjectMutex(projectID int) {
 	mapMutex.Lock()
 	defer mapMutex.Unlock()
-	var p *sync.Mutex
+	var p sync.Mutex
 	projectMutex, ok := mutexes[projectID]
 	if !ok {
-		projectMutex = p
+		projectMutex = &p
 		mutexes[projectID] = projectMutex
 	}
 	projectMutex.Lock()
