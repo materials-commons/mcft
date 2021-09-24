@@ -14,18 +14,20 @@ const (
 	FileBlockReq
 	ServerInfoReq
 	UploadFileReq
+	ServerConnectRequestType
 )
 
 var KnownRequestTypes = map[RequestType]bool{
-	AuthenticateReq:  true,
-	DownloadReq:      true,
-	FileInfoReq:      true,
-	FinishUploadReq:  true,
-	ListDirectoryReq: true,
-	PauseUploadReq:   true,
-	FileBlockReq:     true,
-	ServerInfoReq:    true,
-	UploadFileReq:    true,
+	AuthenticateReq:          true,
+	DownloadReq:              true,
+	FileInfoReq:              true,
+	FinishUploadReq:          true,
+	ListDirectoryReq:         true,
+	PauseUploadReq:           true,
+	FileBlockReq:             true,
+	ServerInfoReq:            true,
+	UploadFileReq:            true,
+	ServerConnectRequestType: true,
 }
 
 type Version struct {

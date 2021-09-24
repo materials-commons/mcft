@@ -69,6 +69,8 @@ func (h *FileTransferHandler) Run() error {
 			err = ErrAlreadyAuthenticated
 		case protocol.UploadFileReq:
 			err = h.startUploadFile()
+		case protocol.FinishUploadReq:
+			return h.computeAndValidateChecksum()
 		case protocol.FileBlockReq:
 			err = h.writeFileBlock()
 		default:
@@ -275,7 +277,29 @@ func (h *FileTransferHandler) fileNeedsConverting() bool {
 }
 
 func (h *FileTransferHandler) submitConversionJobOnFile() {
+}
 
+func (h *FileTransferHandler) computeAndValidateChecksum() error {
+	var (
+		finishUploadRequest protocol.FinishUploadRequest
+		statusResponse      protocol.StatusResponse
+	)
+
+	if err := h.ws.ReadJSON(&finishUploadRequest); err != nil {
+		return err
+	}
+
+	checksum := fmt.Sprintf("%x", h.hasher.Sum(nil))
+
+	if checksum != finishUploadRequest.FileChecksum {
+		statusResponse.Status = fmt.Sprintf("checksums didn't match got (%s), expected (%s)", checksum, finishUploadRequest.FileChecksum)
+		statusResponse.IsError = true
+	} else {
+		statusResponse.Status = "checksums matched!"
+		statusResponse.IsError = false
+	}
+
+	return h.ws.WriteJSON(statusResponse)
 }
 
 // getMimeType will determine the type of a file from its extension. It strips out the extra information

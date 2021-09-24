@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"bytes"
+	"crypto/md5"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -182,6 +184,7 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 
 	data := make([]byte, 32*1024*1024)
 	fb := protocol.FileBlockRequest{}
+	hasher := md5.New()
 	for {
 
 		n, err := f.Read(data)
@@ -205,6 +208,8 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 			return err
 		}
 
+		_, _ = io.Copy(hasher, bytes.NewBuffer(data[:n]))
+
 		var status protocol.StatusResponse
 		if err := c.ReadJSON(&status); err != nil {
 			log.Errorf("Unable to read upload status: %s", err)
@@ -215,6 +220,33 @@ func uploadFile(pathToFile, uploadToPath, apiKey string) error {
 			log.Errorf("Error uploading file: %s", status.Status)
 			return errors.New("failed upload")
 		}
+	}
+
+	// compute checksum and check that they match by sending to the server
+	var finishUploadRequest protocol.FinishUploadRequest
+	finishUploadRequest.FileChecksum = fmt.Sprintf("%x", hasher.Sum(nil))
+	finishUploadRequest.Path = uploadToPath
+	incomingReq.RequestType = protocol.FinishUploadReq
+
+	if err := c.WriteJSON(incomingReq); err != nil {
+		log.Errorf("Error during upload: %s", err)
+		return err
+	}
+
+	if err := c.WriteJSON(&finishUploadRequest); err != nil {
+		log.Errorf("Error during upload: %s", err)
+		return err
+	}
+
+	if err := c.ReadJSON(&status); err != nil {
+		log.Errorf("Unable to read upload status: %s", err)
+		return err
+	}
+
+	// Uh oh the checksums didn't match
+	if status.IsError {
+		log.Errorf("Error uploading file: %s", status.Status)
+		return errors.New("failed upload - checksums didn't match")
 	}
 
 	return nil
