@@ -33,6 +33,7 @@ type FileTransferHandler struct {
 	File         *mcmodel.File
 	projectStore *store.ProjectStore
 	fileStore    *store.FileStore
+	convStore    *store.ConversionStore
 	hasher       hash.Hash
 	mcfsRoot     string
 }
@@ -43,6 +44,7 @@ func NewFileTransferHandler(ws *websocket.Conn, db *gorm.DB) *FileTransferHandle
 		db:           db,
 		projectStore: store.NewProjectStore(db),
 		fileStore:    store.NewFileStore(db, GetMCFSRoot()),
+		convStore:    store.NewConversionStore(db),
 		hasher:       md5.New(),
 		mcfsRoot:     GetMCFSRoot(),
 	}
@@ -242,18 +244,12 @@ func (h *FileTransferHandler) CreateDirectoryAll(dir string) (*mcmodel.File, err
 
 	for _, dirName := range dirs {
 		pathToCheck = filepath.Join(pathToCheck, dirName)
-		dirEntry, err2 := h.fileStore.FindDirByPath(h.Project.ID, pathToCheck)
-		switch {
-		case err2 != nil, dirEntry == nil:
-			dirEntry, err2 = h.fileStore.CreateDir(parentDir.ID, pathToCheck, dirName, h.Project.ID, h.User.ID)
-			if err2 != nil {
-				log.Errorf("  CreateDirectoryAll - CreateDir failed: %s", err2)
-				return nil, err2
-			}
-			parentDir = dirEntry
-		default:
-			parentDir = dirEntry
+		dirEntry, err := h.fileStore.CreateDirIfNotExists(parentDir.ID, pathToCheck, dirName, h.Project.ID, h.User.ID)
+		if err != nil {
+			log.Errorf("  CreateDirectoryAll - CreateDir failed: %s", err)
+			return nil, err
 		}
+		parentDir = dirEntry
 	}
 	return parentDir, nil
 }
@@ -277,6 +273,9 @@ func (h *FileTransferHandler) fileNeedsConverting() bool {
 }
 
 func (h *FileTransferHandler) submitConversionJobOnFile() {
+	if _, err := h.convStore.AddFileToConvert(h.File); err != nil {
+		log.Errorf("Unable to submit conversion on file (%d)(%s): %s", h.File.ID, h.File.Name, err)
+	}
 }
 
 func (h *FileTransferHandler) computeAndValidateChecksum() error {

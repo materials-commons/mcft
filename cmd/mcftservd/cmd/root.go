@@ -62,8 +62,6 @@ var rootCmd = &cobra.Command{
 		e.Use(middleware.Recover())
 		e.GET("/ws", handleUploadDownloadConnection)
 
-		showEnv()
-
 		e.Logger.Fatal(e.Start(":1423"))
 	},
 }
