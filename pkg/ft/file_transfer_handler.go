@@ -111,9 +111,11 @@ func (h *FileTransferHandler) close() {
 
 		if h.pointedAtExistingFile() {
 			// There is already an uploaded that matches the checksum. At this point the file entry has been updated
-			// to point at it, so we can remove the physical file that was uploaded.
-			if err := os.Remove(h.File.ToUnderlyingFilePath(h.mcfsRoot)); err != nil {
-				log.Errorf("Failed to remove file %s: %s", h.File.ToUnderlyingFilePath(h.mcfsRoot), err)
+			// to point at it, so we can remove the physical file that was uploaded. Not that we are deleting the file
+			// pointed at by h.File.UUID. At this point h.File.UsesUUID has been updated, so we explicitly need to
+			// remove the file that was just uploaded (which went into a path determined by h.File.UUID).
+			if err := os.Remove(h.File.ToUnderlyingFilePathForUUID(h.mcfsRoot)); err != nil {
+				log.Errorf("Failed to remove file %s: %s", h.File.ToUnderlyingFilePathForUUID(h.mcfsRoot), err)
 			}
 			return
 		}
