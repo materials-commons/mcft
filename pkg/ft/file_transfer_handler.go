@@ -106,9 +106,22 @@ func (h *FileTransferHandler) close() {
 			if err := h.fileStore.UpdateMetadataForFileAndProject(h.File, checksum, h.Project.ID, finfo.Size()); err != nil {
 				log.Errorf("Failed to update metadata for file %d: %s", h.File.ID, err)
 			}
+			h.File.Checksum = checksum
 		}
+
+		if h.pointedAtExistingFile() {
+			// There is already an uploaded that matches the checksum. At this point the file entry has been updated
+			// to point at it, so we can remove the physical file that was uploaded.
+			if err := os.Remove(h.File.ToUnderlyingFilePath(h.mcfsRoot)); err != nil {
+				log.Errorf("Failed to remove file %s: %s", h.File.ToUnderlyingFilePath(h.mcfsRoot), err)
+			}
+			return
+		}
+
+		// If we are here then this is a new file without a checksum match in the database. Check to see if
+		// we should create a converted version for viewing on the web.
 		if h.fileNeedsConverting() {
-			//   3. Kicking off a job to do a conversion (if appropriate)
+			// Kick off a job to do a conversion
 			h.submitConversionJobOnFile()
 		}
 	}
@@ -299,6 +312,14 @@ func (h *FileTransferHandler) computeAndValidateChecksum() error {
 	}
 
 	return h.ws.WriteJSON(statusResponse)
+}
+
+func (h *FileTransferHandler) pointedAtExistingFile() bool {
+	switched, err := h.fileStore.PointAtExistingIfExists(h.File)
+	if err != nil {
+		return false
+	}
+	return switched
 }
 
 // getMimeType will determine the type of a file from its extension. It strips out the extra information
